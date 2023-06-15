@@ -1,7 +1,7 @@
 from random import random
 import networkx as nx
 from time import sleep
-# from numpy.random import random
+import matplotlib.pyplot as plt
 from math import erf
 import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -86,7 +86,6 @@ class City():
         elif prob_fn == "ratio":
             new_infected = disease.infect_prob   * self.uninfected.n * self.infected.n / (self.uninfected.n + self.infected.n)
             reinfected   = disease.reinfect_prob * self.recovered.n  * self.infected.n / (self.recovered.n  + self.infected.n) 
-
         elif prob_fn == "erf": 
             new_infected = disease.infect_prob   * self.uninfected.n * erf(self.infected.n/self.uninfected.n)
             reinfected   = disease.reinfect_prob * self.recovered.n  * erf(self.infected.n/self.recovered.n)
@@ -120,7 +119,6 @@ class City():
         disease.research_progress += self.research_rate
         return disease.research_progress
         
-        
     def print_info(self, disease: Disease) -> None:
         print(f"uninfected: {self.uninfected.n}")
         print(f"infected: {self.infected.n}")
@@ -144,17 +142,34 @@ def make_graph():
     G.add_edge('infected', 'dead')
     print(G.edges())
 
-    nx.draw(G, pos=positions)
-    sleep(50)
+    nx.draw_networkx(G, pos=positions, node_size=1000, with_labels=True)
+    plt.axis('equal')
+    plt.show()
+
+def draw_plot(record: dict):
+    fig, ax = plt.subplots()
+    ax.plot(record['uninfected'])
+    ax.plot(record['infected'])
+    ax.plot(record['recovered'])
+    ax.plot(record['dead'])
+    ax.legend(record.keys())
+    plt.show()
 
 
 if __name__ == "__main__":
+
+    init_uninfected = 1000
+    init_infected = 10
     disease = Disease()
-    city = City(1000, 10)
-    duration = 1000
+    city = City(init_uninfected, init_infected)
+    record = {'uninfected': [init_uninfected], 'infected': [init_infected], 'dead': [], 'recovered': []}
+    duration = 300
     for i in range(duration):
         city.update_city_status(disease)
-        if i % 200 == 0:
-            city.print_info(disease)
-    make_graph()
+        record['dead'].append(city.dead.n)
+        record['infected'].append(city.infected.n)
+        record['recovered'].append(city.recovered.n)
+        record['uninfected'].append(city.uninfected.n)
 
+    draw_plot(record)
+    # make_graph()
