@@ -50,7 +50,7 @@ class Population():
         self.name = "Esterpool"
         self.diseases = {}
 
-    def load_disease_info(self, disease_name: str, n_unf: int, n_inf: int, n_rec: int = 0, n_dead: int = 0, research_rate: float=0.001):
+    def load_disease_info(self, disease_name: str, n_unf: int, n_inf: int, n_rec: int=0, n_dead: int=0, research_rate: float=0.001):
         if n_unf + n_inf + n_rec + n_dead != self.total: 
             raise ValueError("The total number of people must equal the population total")
 
@@ -74,7 +74,7 @@ class Population():
         self.die(disease.death_prob)
         # self.research(disease)
         # self.impact = (self.dead.n + self.infected.n) / (self.dead.n + self.infected.n + self.uninfected.n + self.recovered.n)
-        assert self.uninfected.n + self.infected.n + self.dead.n + self.recovered.n == self.total
+        assert self.diseases[disease]['uninfected'].n + self.diseases[disease]['infected'].n + self.diseases[disease]['recovered'].n + self.diseases[disease]['dead'].n == self.total
 
     def infect(self, infect_prob: float, reinfect_prob: float, prob_fn: str = "simple") -> None:
         """
@@ -83,50 +83,51 @@ class Population():
         """
         # [ ] TODO include option to be dependent upon number dead
         # [ ] TODO adjust infected/reinfected per disease instead of total
+        dis = self.diseases[disease]
         if prob_fn == 'simple':
-            new_infected = infect_prob   * self.uninfected.n
-            reinfected   = reinfect_prob * self.recovered.n
+            new_infected = infect_prob   * dis['uninfected'].n
+            reinfected   = reinfect_prob * dis['recovered'].n
         elif prob_fn == "ratio":
-            new_infected = infect_prob   * self.uninfected.n * self.infected.n / (self.uninfected.n + self.infected.n)
-            reinfected   = reinfect_prob * self.recovered.n  * self.infected.n / (self.recovered.n  + self.infected.n) 
+            new_infected = infect_prob   * dis['uninfected'].n * dis['infected'].n / (dis['uninfected'].n + dis['infected'].n)
+            reinfected   = reinfect_prob * dis['recovered'].n * dis['infected'].n / (dis['recovered'].n + dis['infected'].n)
         elif prob_fn == "erf": 
-            new_infected = infect_prob   * self.uninfected.n * erf(self.infected.n/self.uninfected.n)
-            reinfected   = reinfect_prob * self.recovered.n  * erf(self.infected.n/self.recovered.n)
+            new_infected = infect_prob   * dis['uninfected'].n * erf(dis['infected'].n/dis['uninfected'].n)
+            reinfected   = reinfect_prob * dis['recovered'].n * erf(dis['infected'].n/dis['uninfected'].n)
 
         new_infected = round(new_infected)
         reinfected = round(reinfected)
-        self.uninfected.transfer_people(new_infected, self.infected)
-        self.recovered.transfer_people(reinfected, self.infected)
+        dis["uninfected"].transfer_people(new_infected, dis["infected"])
+        dis["recovered"].transfer_people(reinfected, dis["infected"])
 
     def recover(self, recover_prob: float) -> int:
         """
         disease: a disease that people will recover from
         """
-        new_recovered = recover_prob * self.infected.n
+        new_recovered = recover_prob * self.diseases[disease]["infected"].n
         new_recovered = round(new_recovered)
-        return self.infected.transfer_people(new_recovered, self.recovered)
+        return self.diseases[disease]["infected"].transfer_people(new_recovered, self.diseases[disease]["recovered"])
         
 
     def die(self, death_prob: float) -> int:
         """
         disease: a disease that people will die of
         """
-        died = death_prob * self.infected.n
+        died = death_prob * self.diseases[disease]["infected"].n
         died = round(died)
-        return self.infected.transfer_people(died, self.dead)
+        return self.diseases[disease]["infected"].transfer_people(died, self.diseases[disease]["dead"])
 
     def research(self, research_progress: float) -> int:
         """
         disease: a disease that cities can research
         """
-        research_progress += self.research_rate
-        return research_progress
+        research_progress += self.diseases["research_rate"]
+        return research_progress 
         
     def print_population_status(self, disease: Disease) -> None:
-        print(f"uninfected: {self.uninfected.n}")
-        print(f"infected: {self.infected.n}")
-        print(f"recovered: {self.recovered.n}")
-        print(f"dead: {self.dead.n}")
+        print(f"uninfected: {self.diseases[disease]['uninfected'].n}")
+        print(f"infected: {self.diseases[disease]['infected'].n}")
+        print(f"recovered: {self.diseases[disease]['recovered'].n}")
+        print(f"dead: {self.diseases[disease]['dead'].n}")
         # print(f"research for disease: {disease.research_progress}")
         print()
 
