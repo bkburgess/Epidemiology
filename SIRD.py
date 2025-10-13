@@ -1,4 +1,5 @@
 from random import random, seed
+from argparse import ArgumentParser
 import matplotlib.pyplot as plt 
 from math import exp
 
@@ -36,11 +37,12 @@ class SIRDCity():
         ax.plot(recovered)
         ax.plot(dead)
         ax.legend(("susceptible", "infected", "recovered", "dead"))
+        ax.set_title("Population status over time")
         plt.show()
 
 
-    def run(self):
-        for _ in range(100):
+    def run(self, duration=100):
+        for _ in range(duration):
             s, i = self.infect(self.susceptible[-1], self.infected[-1])
             i, r = self.recover(i, self.recovered[-1])
             i, d = self.die(i, self.dead[-1])
@@ -53,6 +55,13 @@ class SIRDCity():
 
 
 if __name__ == "__main__":
-    city = SIRDCity()
-    city.run()
+    parser = ArgumentParser()
+    parser.add_argument("-duration", default=100)
+    parser.add_argument("-susceptible", default=100)
+    parser.add_argument("-infected", default=20)
+    parser.add_argument("-recovered", default=0)
+    parser.add_argument("-dead", default=0)
+    args = parser.parse_args()
+    city = SIRDCity(args.susceptible, args.infected, args.recovered, args.dead)
+    city.run(args.duration)
     
