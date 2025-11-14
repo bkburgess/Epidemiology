@@ -38,6 +38,8 @@ class SIRDCity():
         ax.plot(dead)
         ax.legend(("susceptible", "infected", "recovered", "dead"))
         ax.set_title("Population status over time")
+        ax.set_ylabel("Quantity of People")
+        ax.set_xlabel("Time")
         plt.show()
 
 

@@ -8,13 +8,12 @@ import random as rand
 import networkx as nx
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt; plt.close('all')
+from argparse import ArgumentParser
+from pprint import pprint
 
 np.random.seed(10)
 
-# [ ] TODO multiple diseases
 # [x] change population based on travelers
-
-
 
 class Disease():
     """
@@ -33,9 +32,6 @@ class Disease():
             self.death_prob = 0
             self.recover_prob = 1
             self.reinfect_prob = 0
-
-
-
 
 
 # one box refers to all the people in a city with a given status
@@ -60,10 +56,6 @@ class Box():
         box.n += n_change
         
         return n_change
-
-
-
-
 
 
 # one city refers to all people within a region of all statuses
@@ -101,7 +93,7 @@ class City():
         self.recover(disease)
         self.die(disease)
         self.research(disease)
-        self.impact = (self.dead + self.infected)/(self.dead+self.infected + self.uninfected + self.recovered)
+        self.impact = (self.dead.n + self.infected.n)/(self.dead.n + self.infected.n + self.uninfected.n + self.recovered.n)
         return self.impact
 
     def infect(self, disease: Disease, prob_fn: str = "ratio"):
@@ -109,8 +101,7 @@ class City():
         disease: a disease that can infect people in a city
         prob_fn: how to calculate the rate of infection (ratio, erf)
         """
-        # [ ] TODO include option to be dependent upon number dead
-        # [ ] TODO adjust infected/reinfected per disease instead of total
+        # [ ] TODO: include option to be dependent upon number dead
         if prob_fn == "ratio":
             new_infected = disease.infect_prob   * self.uninfected.n * self.infected.n/(self.uninfected.n + self.infected.n)
             reinfected   = disease.reinfect_prob * self.recovered.n  * self.infected.n/(self.recovered.n  + self.infected.n) 
@@ -141,7 +132,7 @@ class City():
         """
         disease: a disease that cities can research
         """
-        # [ ] TODO allow for research progress
+        # [ ] TODO: allow for research progress
         # is research associated only with disease? (assumes perfect communication)
         disease.research_progress += self.research_rate
         return disease.research_progress
@@ -163,11 +154,7 @@ class City():
         print(f"dead: {self.dead.n}")
         print(f"research for disease: {disease.research_progress}")
 
-    # [ ] TODO implement ability to conduct research with connected cities
-
-
-
-
+    # [ ] TODO: implement ability to conduct research with connected cities
 
 
 # Geographic and transportation linkage of cities
@@ -188,11 +175,11 @@ class Graph():
             self.city_list.append(city)
             self.make_edges()
 
-    def make_edges(self, con_prob: float = 0.15):
+    def make_edges(self, con_prob: float = 0.40):
         self.edges = set()
         for city1 in self.city_list:
             for city2 in self.city_list:
-                if np.random() < con_prob and city1 is not city2:
+                if np.random.rand() < con_prob and city1 is not city2:
                     self.edges.add((city1.name, city2.name))
                     if self.bidirectional:
                         self.edges.add((city2.name, city1.name))
@@ -213,29 +200,25 @@ class Graph():
         if self.bidirectional:
             self.edges.add((city2.name, city1.name))
 
-    def display(self):
-        impact_list = [city.impact for city in self.city_list]
+    def create_plot(self, impact_list, ax=None):
+        if ax is not None:
+            ax.clear()
+        # impact_list = [city.impact for city in self.city_list]
         
         graph = nx.from_edgelist(self.edges)
-        nx.draw_networkx(graph, node_color=impact_list)
+        # nx.draw_networkx(graph, node_color=impact_list)
+        nx.draw(graph, node_color=impact_list, ax=ax)
+        # needs to return plots
 
 
-
-
-
-
-
-def simulate():
+def simulate(duration, num_cities, n_uninfected, n_infected):
     # Initialize disease
     disease = Disease()
 
     # Initialize cities in graph
-    num_cities = 20
-    n_infected = 100
-    n_uninfected = 5
     city_list = []
-    for i in range(num_cities):
-        city_list.append(City(n_infected, n_uninfected))
+    for _ in range(num_cities):
+        city_list.append(City(n_uninfected, n_infected))
 
     # Initialize graph
     graph = Graph(num_cities)
@@ -243,44 +226,28 @@ def simulate():
     graph.make_edges()
 
     # Simulation
-    duration = 100
+    impact_list = []
     dt = 0.1
     for t in np.arange(0, duration, dt):
+        city_impact = []
         for city in graph.city_list:
-            city.update_city_status(disease)
-            # [ ] TODO implement travel probability and conditions
-            # [ ] TODO implement research across cities
+            city_impact.append(city.update_city_status(disease))
+            # city.update_city_status(disease)
+            # [ ] TODO: implement travel probability and conditions
+            # [ ] TODO: implement research across cities
+        impact_list.append(city_impact)
         
-    graph.display()
-
-
-    fig, ax = plt.subplots()
-    plot, = plt.plot([], [], 'ro')
-    plt.axis('off')
-
-    graph = Graph(num_cities)
-    graph.add_cities(city_list)
-    graph.make_edges()
-
-
-    def init():
-        graph.nodes.set_array()
-        return graph.nodes,
-
-    def update():
-        impact_list = []
-        for city in graph.city_list:
-            impact_list.append(city.update_city_status(disease))
-        
-            
-        graph.nodes.set_array(impact_list)
-        return graph.nodes,
-
-    ani = FuncAnimation(fig, update, frames=duration, blit=True)
+    pprint(impact_list)
+    graph.create_plot(impact_list[-1])
     plt.show()
 
 
-
+    # def update(frame):
+    #     graph.create_plot(impact_list[frame])
+        
+            
+    # ani = FuncAnimation(fig, update, frames=duration, blit=True, fargs=(ax))
+    # plt.show()
 
 
 def simulate_matplt_animation():
@@ -315,5 +282,11 @@ def simulate_matplt_animation():
 
 
 if __name__ == '__main__':
-    simulate()
+    parser = ArgumentParser()
+    parser.add_argument("-duration", default=1)
+    parser.add_argument("-n_cities", default=2)
+    parser.add_argument("-n_infected", default=10)
+    parser.add_argument("-n_uninfected", default=100)
+    args = parser.parse_args()
+    simulate(args.duration, args.n_cities, args.n_uninfected, args.n_infected)
     # simulate_matplt_animation():
